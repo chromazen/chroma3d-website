@@ -1,0 +1,164 @@
+@media (max-width: 760px) {
+  .sculpture-bed { min-height: clamp(315px, 42svh, 480px); }
+}
+@media (pointer: coarse) {
+  .sculpture-canvas canvas, .viewer-canvas canvas { touch-action: pan-y !important; }
+}
+@media (max-width: 460px) {
+  .sculpture-tools { padding-inline: 10px 2px; gap: 2px; min-height: 48px; font-size: 12px; }
+  .sculpture-zoom { padding: 0; }
+  .sculpture-label { left: 11px; top: 4px; }
+  .sculpture-actions { top: 4px; right: 3px; }
+}
+@media (max-width: 850px) {
+  .mast {
+    gap: 17px;
+    min-height: 75px;
+  }
+  .mast nav {
+    gap: 20px;
+  }
+  .bag-link {
+    margin-left: 7px;
+  }
+  .checkout-grid {
+    gap: 30px;
+  }
+}
+@media (max-width: 620px) {
+  .mast,
+  .wrap,
+  .colophon,
+  .home {
+    padding-inline: 18px;
+  }
+  .mast {
+    min-height: 0;
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 0;
+    padding-top: 12px;
+  }
+  .mast > .bag-link {
+    grid-column: 2;
+    grid-row: 1;
+    margin: 0;
+  }
+  .mast nav {
+    grid-column: 1/-1;
+    grid-row: 2;
+    justify-content: space-between;
+    margin: 0;
+    border-top: 1px solid var(--rule);
+    margin-top: 9px;
+    gap: 10px;
+  }
+  .mast nav a {
+    font-size: 14px;
+    padding-block: 12px;
+  }
+  .wordmark {
+    font-size: 25px;
+  }
+  .wordmark img {
+    width: 36px;
+    height: 36px;
+  }
+  .colophon {
+    padding-block: 18px;
+    align-items: start;
+  }
+  .colophon > div {
+    gap: 7px;
+    align-items: flex-start;
+    flex-direction: column;
+  }
+  .colophon > div:last-child {
+    flex-direction: row;
+    gap: 13px;
+  }
+  .colophon a {
+    font-size: 11px;
+  }
+  .page {
+    padding-block: 30px 50px;
+  }
+  .page-heading {
+    display: block;
+    margin-bottom: 28px;
+  }
+  .page-heading > p {
+    margin-top: 14px;
+  }
+  .page h1 {
+    font-size: clamp(29px, 8.5vw, 46px);
+  }
+  .page h2 {
+    font-size: 25px;
+  }
+  .checkout-grid {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 26px;
+  }
+  .back {
+    margin-bottom: 15px;
+  }
+  .viewer {
+    min-height: 265px;
+  }
+  .bag-line {
+    grid-template-columns: 62px minmax(0, 1fr) auto;
+    gap: 11px;
+  }
+  .bag-line img,
+  .file-thumb {
+    width: 62px;
+    height: 78px;
+  }
+  .bag-line h2 {
+    font-size: 21px;
+  }
+  .bag-line p,
+  .bag-money {
+    font-size: 12px;
+  }
+  .form-pair,
+  .form-row {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 12px;
+  }
+  .form-pair label {
+    min-width: 0;
+  }
+  .quote-dialog {
+    padding: 24px;
+  }
+  .quote-dialog h2 {
+    font-size: 30px;
+  }
+  .proposal-view {
+    height: 290px;
+  }
+  .scene-bottom > span {
+    display: none;
+  }
+  .scene-controls {
+    margin-left: auto;
+  }
+  .page-heading > .inline-link {
+    margin-top: 9px;
+  }
+}
+@media (max-width: 380px) {
+  .form-pair,
+  .form-row {
+    grid-template-columns: 1fr;
+  }
+  .colophon > div:last-child {
+    flex-direction: column;
+    gap: 0;
+  }
+  .scene-controls .explode-control {
+    font-size: 11px;
+  }
+}

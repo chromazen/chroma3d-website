@@ -8,4 +8,3 @@ The homepage displays an interactive web copy of the studio’s textured Mahalak
 - Prototype studio: a local project brief with optional reference files, an optional visitor-initiated WhatsApp enquiry, example design review, revision note, design approval and delivery handoff preview.
 
 Products, prices, customer workspaces and checkout confirmations are for design review. Bag entries and project data live in browser memory. No payments, server uploads, customer notifications, downloads of purchased files, or fulfilment are connected. Before launch, connect verified pricing, catalogue, secure storage, customer/owner accounts, payments and fulfilment.
-
