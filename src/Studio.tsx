@@ -123,8 +123,8 @@ export default function Studio({
                 <em>LET’S MAKE IT REAL.</em>
               </h1>
               <p className="editorial-deck">
-                Bring a sketch, a reference or a problem to solve. We’ll work
-                through the design together before it goes to print.
+                Bring our Chennai studio a sketch, a reference or a problem
+                to solve. We’ll work through the design together before it goes to print.
               </p>
             </>
           ) : (

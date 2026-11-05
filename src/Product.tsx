@@ -6,16 +6,16 @@ import SculptureViewer from "./components/SculptureViewer";
 
 export default function Product({
   id,
+  digital,
   add,
 }: {
   id: string;
+  digital: boolean;
   add: (line: CartLine) => void;
 }) {
   const item = collection.find((p) => p.id === id);
   const [format, setFormat] = useState<Format>(
-    new URLSearchParams(location.search).get("format") === "stl"
-      ? "STL file"
-      : "Printed piece",
+    digital ? "STL file" : "Printed piece",
   );
   const [qty, setQty] = useState(1);
   const [finish, setFinish] = useState("As printed");

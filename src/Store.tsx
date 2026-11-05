@@ -30,12 +30,14 @@ export default function Store() {
             <em>presence.</em>
           </h1>
           <p className="editorial-deck">
-            Sculptural studies to hold in your hand or print from a digital
-            file.
+            Explore the studio’s sculptures as physical 3D prints or digital
+            STL models.
           </p>
         </div>
         <img
           src="/adiyogi-store-1440.webp"
+          width={1440}
+          height={1017}
           srcSet="/adiyogi-store-720.webp 720w, /adiyogi-store-1440.webp 1440w, /adiyogi-store-2880.webp 2880w"
           sizes="(max-width: 740px) 58vw, (max-width: 1780px) 47vw, 840px"
           alt="Adiyogi in ash grey, seen in three-quarter view"
@@ -102,7 +104,7 @@ export default function Store() {
             >
               <div className="object-photo">
                 <span className="micro">Object / {item.number}</span>
-                <img src={item.cover} alt={item.name + " sculpture"} />
+                <img src={item.cover} loading="lazy" alt={item.name + " sculpture"} />
                 <span className="image-arrow">
                   <ArrowUpRightIcon />
                 </span>

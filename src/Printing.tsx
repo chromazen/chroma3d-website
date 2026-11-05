@@ -77,7 +77,7 @@ export default function Printing({
     <main className="wrap config-page" id="main">
       <header className="config-header">
         <div>
-          <p className="kicker">02 / Made to order</p>
+          <p className="kicker">02 / Custom 3D printing in Chennai</p>
           <h1 className="display-title">
             Upload. Configure. <em>Print.</em>
           </h1>

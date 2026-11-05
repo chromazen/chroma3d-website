@@ -11,6 +11,7 @@ import Printing from "./Printing";
 import Studio, { useStudioProject } from "./Studio";
 import { business } from "./content";
 import { navigate } from "./collection";
+import { updateHead } from "./seo";
 import type { CartLine } from "./collection";
 
 const entrances = [
@@ -119,22 +120,18 @@ function Home() {
     </main>
   );
 }
-export default function App() {
+export default function App({ initialPath = "/" }: { initialPath?: string }) {
   const project = useStudioProject();
   const url = useSyncExternalStore(
     subscribe,
     () => location.pathname + location.search,
+    () => initialPath,
   );
   const path = url.split("?")[0].replace(/\/$/, "") || "/";
   const [lines, setLines] = useState<CartLine[]>([]);
   const prev = useRef(url);
   useEffect(() => {
-    const t =
-      entrances.find((e) => path.startsWith(e.path))?.short ||
-      { "/bag": "Bag", "/checkout": "Checkout" }[path];
-    document.title = t
-      ? t + " | Chroma3D"
-      : "Chroma3D | 3D printing studio in Chennai";
+    updateHead(path);
     if (prev.current !== url) {
       prev.current = url;
       window.scrollTo({ top: 0, behavior: "instant" });
@@ -230,7 +227,7 @@ export default function App() {
       ) : path === "/shop" ? (
         <Store />
       ) : path.startsWith("/shop/") ? (
-        <Product key={url} id={path.slice(6)} add={add} />
+        <Product key={url} id={path.slice(6)} digital={new URLSearchParams(url.split("?")[1]).get("format") === "stl"} add={add} />
       ) : path === "/print" ? (
         <Printing add={add} />
       ) : path === "/studio" ? (

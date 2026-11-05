@@ -1,0 +1,12 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "cleanUrls": true,
+  "trailingSlash": false,
+  "headers": [
+    {
+      "source": "/(.*)",
+      "missing": [{ "type": "host", "value": "www.chroma3d.in" }],
+      "headers": [{ "key": "X-Robots-Tag", "value": "noindex, follow" }]
+    }
+  ]
+}

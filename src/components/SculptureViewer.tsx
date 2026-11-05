@@ -26,7 +26,7 @@ export default function SculptureViewer({
     "loading",
   );
   const [spinning, setSpinning] = useState(
-    () => !window.matchMedia("(prefers-reduced-motion: reduce)").matches,
+    () => typeof window !== "undefined" && !window.matchMedia("(prefers-reduced-motion: reduce)").matches,
   );
   useEffect(() => {
     const preference = window.matchMedia("(prefers-reduced-motion: reduce)");
