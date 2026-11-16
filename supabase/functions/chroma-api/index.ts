@@ -1,5 +1,6 @@
 import { createClient } from "npm:@supabase/supabase-js@2.119.0";
-import { handleGatewayEvent, openSandboxPayment, sandboxKeys } from "./payments.ts";
+import { handleGatewayEvent, openPayment, paymentKeys, webhookSecret } from "./payments.ts";
+import type { PaymentMode } from "./payments.ts";
 import { Invalid } from "./errors.ts";
 import {
   digest,
@@ -35,8 +36,10 @@ const json = (value: unknown, status = 200) =>
     headers: { ...cors, "Content-Type": "application/json" },
   });
 type Result<T> = { data: T; error: unknown };
-function checked<T>(result: Result<T>): T {
-  if (result.error)
+function checked<T>(result: Result<T>, allowNull: true): T;
+function checked<T>(result: Result<T>, allowNull?: false): NonNullable<T>;
+function checked<T>(result: Result<T>, allowNull = false): T {
+  if (result.error || (!allowNull && result.data == null))
     throw new Invalid(
       "The operation could not be completed. Check the details and current status.",
       409,
@@ -44,11 +47,11 @@ function checked<T>(result: Result<T>): T {
   return result.data;
 }
 const rpc = async (name: string, args: Record<string, unknown>) =>
-  checked(await db.rpc(name, args));
-const gatewayKeys = () => sandboxKeys(name => Deno.env.get(name));
-async function recordTestCapture(orderId: string, paymentId: string, amount: number, currency: string) {
-  await rpc("record_test_payment_capture", { p_order_id: orderId, p_provider: "razorpay",
-    p_capture_id: paymentId, p_amount_minor: amount, p_currency: currency });
+  checked(await db.rpc(name, args), true);
+const gatewayKeys = () => paymentKeys(name => Deno.env.get(name));
+async function recordCapture(mode: PaymentMode, orderId: string, paymentId: string, amount: number, currency: string, refunded = 0) {
+  await rpc("record_gateway_capture", { p_mode: mode, p_order_id: orderId,
+    p_payment_id: paymentId, p_amount_minor: amount, p_currency: currency, p_refunded_minor: refunded });
 }
 async function rate(key: string, limit: number) {
   if (!(await rpc("workflow_rate", { p_key: key, p_limit: limit })))
@@ -116,7 +119,7 @@ async function upload(
   file: Awaited<ReturnType<typeof inspectFile>>,
 ) {
   const path = id + "/" + crypto.randomUUID() + "." + file.ext;
-  checked(await db.from("upload_intents").insert({ bucket, path }));
+  checked(await db.from("upload_intents").insert({ bucket, path }), true);
   checked(
     await db.storage
       .from(bucket)
@@ -126,7 +129,7 @@ async function upload(
 }
 async function clearIntents(paths: string[]) {
   if (paths.length)
-    checked(await db.from("upload_intents").delete().in("path", paths));
+    checked(await db.from("upload_intents").delete().in("path", paths), true);
 }
 type Data = Record<string, any>;
 function submission(data: Data) {
@@ -219,6 +222,7 @@ async function owned(
 ) {
   const record = checked(
     await db.from(table).select("*").eq("id", id).maybeSingle(),
+    true,
   );
   if (record && (auth.admin || (auth.user && record.owner_id === auth.user)))
     return record;
@@ -302,10 +306,20 @@ Deno.serve(async (req) => {
   if (req.method !== "POST") return json({ error: "POST required" }, 405);
   try {
     if (new URL(req.url).pathname.replace(/\/$/, "").endsWith("/razorpay-webhook")) {
-      const secret = Deno.env.get("CHROMA_RAZORPAY_TEST_WEBHOOK_SECRET");
-      if (!secret) throw new Invalid("Razorpay test webhook is not configured.", 503);
+      const secret = webhookSecret(name => Deno.env.get(name));
+      if (!secret) throw new Invalid("Payment webhook is not configured.", 503);
       const raw = new Uint8Array(await limitedBody(req, 128 * 1024).arrayBuffer());
-      await handleGatewayEvent(raw, req.headers.get("x-razorpay-signature"), secret, gatewayKeys(), recordTestCapture);
+      const keys = gatewayKeys();
+      await handleGatewayEvent(raw, req.headers.get("x-razorpay-signature"), secret, keys, recordCapture.bind(null, keys?.mode ?? "test"),
+        async (id, paymentId, amount, currency, captured, total) => {
+          await rpc("record_gateway_refund", { p_mode: keys!.mode ?? "test", p_refund_id: id,
+            p_payment_id: paymentId, p_amount_minor: amount, p_currency: currency,
+            p_captured_minor: captured, p_total_refunded: total });
+        },
+        async (paymentId, amount, currency) => {
+          await rpc("record_gateway_failure", { p_mode: keys!.mode ?? "test", p_payment_id: paymentId,
+            p_amount_minor: amount, p_currency: currency });
+        });
       return json({ received: true });
     }
     // A shared ceiling still applies when a client changes its IP or headers.
@@ -319,13 +333,16 @@ Deno.serve(async (req) => {
     const { data, files } = await readInput(req);
     requireValue(data && typeof data === "object", "Invalid request");
     const action = data.action;
-    if (action === "test-payment") {
+    if (action === "test-payment" || action === "payment") {
       const id = uuid(data.id);
       const order = await owned("orders", id, auth, data.receipt);
       requireValue(order.status === "pending" && order.payment_status === "unpaid" &&
         order.currency === "INR" && Number.isSafeInteger(order.total_minor) && order.total_minor > 0, "Order is not payable.");
-      if (await rpc("has_test_payment_capture", { p_order_id: id })) return json({ received: true });
       const keys = gatewayKeys();
+      if (action === "test-payment" && keys?.mode === "live") throw new Invalid("This action requires Test Mode.", 409);
+      if (keys?.mode === "live" && !await rpc("gateway_live_enabled", {}))
+        throw new Invalid("Live payments require owner activation.", 503);
+      if (keys?.mode !== "live" && await rpc("has_test_payment_capture", { p_order_id: id })) return json({ received: true });
       if (!keys) {
         const keyId = Deno.env.get("CHROMA_RAZORPAY_TEST_KEY_ID")?.trim();
         console.warn("Chroma3D sandbox configuration " + JSON.stringify({
@@ -336,7 +353,7 @@ Deno.serve(async (req) => {
         throw new Invalid("Razorpay test mode is not configured.", 503);
       }
       await rate("test-payment:" + id, 20);
-      return json(await openSandboxPayment({ id, total_minor: order.total_minor, currency: order.currency }, keys, recordTestCapture));
+      return json(await openPayment({ id, total_minor: order.total_minor, currency: order.currency }, keys, recordCapture.bind(null, keys.mode ?? "test")));
     }
     if (action === "submit") {
       await rate("submit:" + (await digest(ip)), 25);
@@ -388,18 +405,24 @@ Deno.serve(async (req) => {
         table = data.kind === "order" ? "orders" : "requests";
       const record = await owned(table, id, auth, data.receipt);
       if (action === "read") {
-        if (table === "orders")
+        if (table === "orders") {
+          const keys = gatewayKeys();
+          const paymentAvailable = !!keys && (keys.mode !== "live" || await rpc("gateway_live_enabled", {}));
           return json({
             record: {
               ...record,
+              ...await rpc("gateway_order_state", { p_order_id: id }) as Record<string, unknown>,
+              payment_mode: keys?.mode ?? "test",
+              payment_available: paymentAvailable,
               test_payment_received: await rpc("has_test_payment_capture", { p_order_id: id }),
-              test_checkout_enabled: !!gatewayKeys(),
+              test_checkout_enabled: paymentAvailable && keys?.mode !== "live",
             },
             items: checked(
               await db.from("order_items").select("*").eq("order_id", id),
             ),
             downloads: await rpc("order_downloads", { p_id: id }),
           });
+        }
         let q = db
           .from("request_history")
           .select("id,status,note,revision_id,created_at,internal")
@@ -569,6 +592,7 @@ Deno.serve(async (req) => {
           await db
             .from("request_files")
             .insert({ ...stored, request_id: id, purpose: data.purpose }),
+          true,
         );
       } else if (bucket === "digital-products") {
         requireValue(
@@ -584,6 +608,7 @@ Deno.serve(async (req) => {
               sha256: f.hash,
               version: data.version,
             }),
+          true,
         );
       } else {
         checked(
@@ -597,6 +622,7 @@ Deno.serve(async (req) => {
               display_order: Number(data.position ?? 0),
               is_primary: !!data.primary,
             }),
+          true,
         );
       }
       await clearIntents([stored.path]);

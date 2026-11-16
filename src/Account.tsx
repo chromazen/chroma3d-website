@@ -96,11 +96,13 @@ function Records({ owner, section }: { owner: string; section: Section }) {
         entries = res.data.map(r => ({ ...r, date: r.created_at }));
       } else {
         let query = client.from("orders").select("id,status,payment_status,created_at,total_minor,order_items!inner(product_name,format)").eq("owner_id", owner);
-        if (section === "Downloads") query = query.eq("payment_status","verified").eq("order_items.format","stl");
+        if (section === "Downloads") query = query.in("payment_status",["verified","partially_refunded"]).eq("order_items.format","stl");
         const res = await query.order("created_at", { ascending: false }).order("id").range(start, start + size);
         if (res.error) throw res.error;
         entries = res.data.map(r => ({ id: r.id, kind: "order", title: r.order_items.map(i => i.product_name).join(", "),
-          status: r.payment_status === "unpaid" ? "Awaiting payment" : r.status, date: r.created_at, total: r.total_minor }));
+          status: r.payment_status === "refunded" ? "Refunded" : r.payment_status === "partially_refunded" ? "Partially refunded" :
+            r.status === "cancelled" ? "Cancelled" : r.payment_status === "unpaid" ? "Awaiting payment" : r.status,
+          date: r.created_at, total: r.total_minor }));
         if (section === "Downloads") {
           downloads = (await Promise.all(entries.slice(0,size).map(async entry => {
             const detail = await operation<{ downloads: { id: string; filename: string }[] }>({ action: "read", kind: "order", id: entry.id });

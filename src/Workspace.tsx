@@ -45,6 +45,10 @@ type Detail = {
     payment_status?: string;
     test_payment_received?: boolean;
     test_checkout_enabled?: boolean;
+    payment_mode?: "test" | "live";
+    payment_available?: boolean;
+    test_refunded_minor?: number;
+    review_required?: boolean;
     quote_minor?: number;
     estimated_minor?: number;
     material_grams?: number;
@@ -215,17 +219,23 @@ export function RecordDetail({
       {r.test_payment_received && r.payment_status === "unpaid" && (
         <p role="status">Test payment received. No money was collected. STL downloads require a verified purchase.</p>
       )}
-      {!admin && kind === "order" && r.test_checkout_enabled && !r.test_payment_received &&
+      {Number(r.test_refunded_minor) > 0 && <p role="status">Test refund recorded · ₹{Number(r.test_refunded_minor) / 100}. No real money was refunded.</p>}
+      {r.review_required && <p role="status">A captured payment needs studio review before fulfilment or downloads.</p>}
+      {r.payment_status === "refunded" && <p role="status">Payment refunded. New download links are unavailable for this order.</p>}
+      {!admin && kind === "order" && (r.payment_available ?? r.test_checkout_enabled) && !(r.payment_mode !== "live" && r.test_payment_received) &&
         r.payment_status === "unpaid" && r.status === "pending" && Number(r.total_minor) > 0 && (
         <div className="form-stack">
-          <p>Test checkout. If Razorpay offers a UPI ID field, enter <code>success@razorpay</code>.
-            {" "}Otherwise, choose a test card. Scanning a QR with GPay requires live payments.</p>
-          {checkoutUrl && <a href={checkoutUrl} target="_blank" rel="noopener noreferrer" className="primary">Open Razorpay test checkout ↗</a>}
+          {r.payment_mode === "live" ? <p>Continue to Razorpay to pay securely.</p> :
+            <p>Test checkout. If Razorpay offers a UPI ID field, enter <code>success@razorpay</code>.
+              {" "}Otherwise, choose a test card. Scanning a QR with GPay requires live payments.</p>}
+          {checkoutUrl && <a href={checkoutUrl} target="_blank" rel="noopener noreferrer" className="primary">
+            {r.payment_mode === "live" ? "Open Razorpay checkout ↗" : "Open Razorpay test checkout ↗"}</a>}
           <button disabled={busy} onClick={() => run(async () => {
-            const result = await operation<{ checkoutUrl?: string; received?: boolean }>({ action: "test-payment", ...target });
+            const result = await operation<{ checkoutUrl?: string; received?: boolean }>({ action: "payment", ...target });
             if (result.received) { setCheckoutUrl(""); setVersion(v => v + 1); }
             else if (result.checkoutUrl) setCheckoutUrl(result.checkoutUrl);
-          })}>{checkoutUrl ? "Check test payment status" : "Get test payment link"}</button>
+          })}>{checkoutUrl ? (r.payment_mode === "live" ? "Check payment status" : "Check test payment status") :
+            (r.payment_mode === "live" ? "Get payment link" : "Get test payment link")}</button>
         </div>
       )}
       {r.shipping && <p>Delivery · {Object.values(r.shipping).join(", ")}</p>}
