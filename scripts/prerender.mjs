@@ -1,6 +1,6 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
-import { createServer } from "vite";
+import { createServer, loadEnv } from "vite";
 
 const output = "dist";
 const template = await readFile(join(output, "index.html"), "utf8");
@@ -11,12 +11,14 @@ const server = await createServer({
   appType: "custom",
 });
 try {
-  const { publicPaths, sitemapUrls, renderPage } = await server.ssrLoadModule("/src/prerender.tsx");
-  for (const path of [...publicPaths, "/bag", "/checkout", "/404"]) {
+  const { prepareCatalog, renderPage } = await server.ssrLoadModule("/src/prerender.tsx");
+  const env = {...loadEnv("production", process.cwd(), "VITE_"), ...process.env};
+  const {publicPaths, sitemapUrls, snapshot} = await prepareCatalog(env.VITE_SUPABASE_URL,env.VITE_SUPABASE_PUBLISHABLE_KEY);
+  for (const path of [...publicPaths, "/bag", "/checkout", "/account", "/admin", "/requests", "/404"]) {
     const { head, body } = await renderPage(path);
     const html = template
       .replace(/<!--route-head-->[\s\S]*?<!--\/route-head-->/, () => head)
-      .replace('<div id="root"></div>', () => body);
+      .replace('<div id="root"></div>', () => body + '<script id="catalog-data" type="application/json">'+snapshot+'</script>');
     const file = join(output, (path === "/" ? "index" : path.slice(1)) + ".html");
     await mkdir(dirname(file), { recursive: true });
     await writeFile(file, html);

@@ -78,6 +78,24 @@
   justify-self: end;
   margin: 0;
 }
+.mast-utilities, .account-link {
+  display: flex;
+  align-items: center;
+}
+.mast-utilities {
+  justify-self: end;
+  gap: clamp(10px, 1.4vw, 24px);
+}
+.account-link {
+  gap: 6px;
+  min-height: 44px;
+  font-size: 14px;
+  font-weight: 550;
+}
+@media (max-width: 1050px) {
+  .account-link { justify-content: center; min-width: 36px; }
+  .account-link span { display: none; }
+}
 .bag-link b {
   color: var(--accent);
   font: 500 12px var(--mono);
@@ -607,6 +625,7 @@ h2 em {
     padding-block: 11px;
     font-size: 13px;
   }
+  .mast-utilities { grid-area: 1/2; }
   .mast .bag-link {
     grid-area: 1/2;
     padding-block: 5px;
@@ -979,6 +998,18 @@ h2 em {
 .purchase {
   min-width: 0;
 }
+.product-part-picker, .shop-preview-colour { display: grid; gap: 6px; margin: 0 0 16px; font-size: 14px; }
+.shop-preview-colour { margin: 18px 0; }
+.shop-preview-colour > div { display: flex; align-items: center; gap: 10px; }
+.shop-preview-colour > div > span { height: 20px; width: 20px; flex: none; border-radius: 50%; border: 1px solid var(--mute); }
+.shop-preview-colour small, .product-render-status { color: var(--mute); }
+.shop-preview-colour select, .product-part-picker select {
+  min-width: 0; max-width: 100%; min-height: 44px; padding: 8px 12px; color: var(--ink);
+  background: var(--panel, #191b19); border: 1px solid var(--rule); border-radius: 5px; font: inherit;
+}
+.shop-preview-colour select { flex: 1; }
+.shop-preview-colour input[type="color"] { width: 44px; height: 44px; flex: none; }
+.product-render-status button { text-decoration: underline; }
 .product-stage {
   border: 1px solid var(--rule);
   border-radius: 11px;
@@ -1013,6 +1044,7 @@ h2 em {
 }
 .gallery-rail {
   display: flex;
+  flex-wrap: wrap;
   gap: 8px;
   margin-top: 12px;
 }

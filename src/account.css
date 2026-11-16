@@ -1,0 +1,24 @@
+.customer-account { max-width: 1180px; min-height: 58vh; }
+.customer-auth { display: grid; grid-template-columns: 1fr minmax(260px, .85fr); gap: clamp(32px, 7vw, 100px); align-items: start; }
+.customer-account h1 { margin: 10px 0 14px; font: 650 clamp(38px, 5vw, 66px)/1.04 var(--display); letter-spacing: -.045em; }
+.customer-auth > div > p:last-child, .account-heading p, .account-empty p { color: var(--mute); max-width: 37ch; line-height: 1.6; }
+.customer-auth fieldset { display: grid; gap: 18px; padding: 0; margin: 0; border: 0; min-width: 0; }
+.customer-auth .primary, .customer-auth .inline-link { justify-self: start; }
+.account-switch, .account-sections, .account-heading { display: flex; gap: 20px; align-items: center; flex-wrap: wrap; }
+.account-switch button, .account-sections button { padding-block: 10px; }
+.account-switch button { text-decoration: underline; text-underline-offset: .2em; font-size: 14px; }
+.account-heading { justify-content: space-between; }
+.account-sections { border-block-end: 1px solid var(--rule); margin: 26px 0; }
+.account-sections button { min-height: 44px; color: var(--mute); }
+.account-sections button[aria-pressed="true"] { color: var(--ink); box-shadow: inset 0 -2px var(--accent); }
+.account-records h2 { margin-bottom: 18px; }
+.account-row { display: flex; align-items: center; justify-content: space-between; text-align: left; gap: 16px; width: 100%; padding: 16px 0; border-bottom: 1px solid var(--rule); overflow-wrap: anywhere; }
+.account-row strong, .account-row small { display: block; }
+.account-row small { margin-top: .4em; color: var(--mute); }
+.account-row span:last-child { display: inline-flex; align-items: center; gap: 8px; }
+.account-record { display: grid; gap: 20px; }
+.account-record > .inline-link { justify-self: start; }
+@media (max-width: 700px) {
+  .customer-auth { grid-template-columns: minmax(0, 1fr); }
+  .account-row { flex-wrap: wrap; }
+}

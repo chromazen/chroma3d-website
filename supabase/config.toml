@@ -1,0 +1,4 @@
+project_id = "chroma3d-dev"
+
+[functions.chroma-api]
+verify_jwt = false

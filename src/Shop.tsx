@@ -1,4 +1,5 @@
-import { useState } from "react";
+import {submitWork} from "./backend";
+import { lazy, Suspense, useState } from "react";
 import {
   ArrowUpRightIcon,
   ArrowLeftIcon,
@@ -8,6 +9,8 @@ import {
 } from "@phosphor-icons/react";
 import { rupees } from "./collection";
 import type { CartLine } from "./collection";
+
+const OrderDetail = lazy(() => import("./Workspace").then(module => ({ default: module.RecordDetail })));
 
 type CartProps = {
   lines: CartLine[];
@@ -75,7 +78,7 @@ export function Bag({ lines, change }: CartProps) {
             ))}
           </div>
           <div className="total">
-            <span>Preview subtotal</span>
+            <span>Subtotal</span>
             <strong>
               {rupees(lines.reduce((s, l) => s + l.price * l.quantity, 0))}
             </strong>
@@ -92,19 +95,23 @@ export function Bag({ lines, change }: CartProps) {
 export function Checkout({
   lines,
   complete,
+  sessionEmail,
 }: {
   lines: CartLine[];
   complete: () => void;
+  sessionEmail?: string;
 }) {
-  const [receipt, setReceipt] = useState(false);
+  const [receipt, setReceipt] = useState(false), [busy,setBusy]=useState(false),[error,setError]=useState("");
+  const [order, setOrder] = useState<Awaited<ReturnType<typeof submitWork>>>();
+  const commercial=lines.some(l=>l.sample===false),mixed=commercial&&lines.some(l=>l.sample!==false);
   const physical = lines.some((l) => l.physical);
   if (receipt)
     return (
       <main id="main" className="page wrap narrow">
-        <h1>Checkout preview complete.</h1>
+        <h1>{order?"Order received":"Checkout preview complete."}</h1>
+        {order && <Suspense fallback={<p role="status">Loading your order…</p>}><OrderDetail target={order} /></Suspense>}
         <p className="lead">
-          Your sample order reached the confirmation step. No payment was
-          collected and no files were delivered.
+          {order?<a href={sessionEmail ? "/account" : "/requests"}>{sessionEmail ? "Go to My Account" : "View your saved orders and requests"}</a>:"Your sample order reached the confirmation step. No payment was collected and no files were delivered."}
         </p>
         <a className="inline-link" href="/shop">
           Back to shop
@@ -126,25 +133,31 @@ export function Checkout({
       </a>
       <div className="page-heading">
         <h1>Checkout</h1>
-        <p>Design preview. Use sample details to try this flow.</p>
+        <p>{commercial?"Development checkout records an unpaid order.":"Design preview. Use sample details to try this flow."}</p>
       </div>
       <div className="checkout-grid">
         <form
           className="form-stack"
-          onSubmit={(e) => {
-            e.preventDefault();
-            setReceipt(true);
-            complete();
+          onSubmit={async(e) => {
+            e.preventDefault();if(busy||mixed)return;
+            if(!commercial){setReceipt(true);complete();return}
+            const f=new FormData(e.currentTarget);
+            setBusy(true);setError("");
+            try{const savedOrder=await submitWork("order",{name:f.get("name"),email:f.get("email"),shipping:physical?{address:f.get("address"),city:f.get("city"),pin:f.get("pin")}:null,
+              items:lines.map(l=>({variant_id:l.variantId,quantity:l.quantity,finish:l.detail,height_mm:l.heightMm}))});
+              setOrder(savedOrder);setReceipt(true);complete();
+            }catch(err){setError((err as Error).message)}finally{setBusy(false)}
           }}
         >
           <h2>{physical ? "Delivery details" : "Digital delivery"}</h2>
+          {!sessionEmail && <a className="inline-link" href="/account?returnTo=/checkout">Sign in to keep this order in My account</a>}
           <label>
             Name
             <input required name="name" autoComplete="name" maxLength={100} />
           </label>
           <label>
             Email
-            <input required type="email" name="email" autoComplete="email" />
+            <input required type="email" name="email" autoComplete="email" defaultValue={sessionEmail} />
           </label>
           {physical && (
             <>
@@ -160,13 +173,13 @@ export function Checkout({
               <div className="form-pair">
                 <label>
                   City
-                  <input required autoComplete="address-level2" />
+                  <input required name="city" autoComplete="address-level2" />
                 </label>
                 <label>
                   PIN code
                   <input
                     required
-                    pattern="[0-9]{6}"
+                    name="pin" pattern="[0-9]{6}"
                     inputMode="numeric"
                     autoComplete="postal-code"
                   />
@@ -174,8 +187,9 @@ export function Checkout({
               </div>
             </>
           )}
-          <button className="primary">
-            Complete preview order <ArrowUpRightIcon />
+          {mixed&&<p role="alert">Remove sample items before recording a studio order.</p>}{error&&<p role="alert">{error}</p>}
+          <button className="primary" disabled={busy||mixed}>
+            {commercial?"Create order":"Complete preview order"} <ArrowUpRightIcon />
           </button>
         </form>
         <aside className="summary">
@@ -190,13 +204,13 @@ export function Checkout({
             </div>
           ))}
           <div>
-            <strong>Sample total</strong>
+            <strong>{commercial?"Order total":"Sample total"}</strong>
             <strong>
               {rupees(lines.reduce((s, l) => s + l.price * l.quantity, 0))}
             </strong>
           </div>
           <p>
-            This checkout uses sample prices. Completing it does not collect payment or place a production order.
+            {commercial?"Your saved order shows the confirmed total and available payment options.":"This checkout uses sample prices. Completing it does not collect payment or place a production order."}
           </p>
         </aside>
       </div>

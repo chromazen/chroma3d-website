@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { ArrowUpRightIcon, MagnifyingGlassIcon } from "@phosphor-icons/react";
-import { collection, rupees } from "./collection";
+import {useCatalog,refreshCatalog} from "./catalog";
+import { rupees } from "./collection";
 import type { Format } from "./collection";
 
 const formats = ["All objects", "Printed piece", "STL file"] as const;
@@ -10,15 +11,15 @@ export default function Store() {
   const [query, setQuery] = useState("");
   const [sort, setSort] = useState("featured");
   const digital = filter === "STL file";
-  const items = collection.filter((item) =>
+  const {items:collection,error,loading}=useCatalog();
+  const items = collection.filter(item=>filter==="All objects" || item.variants.some(v=>v.format===(digital?"stl":"print"))).filter((item) =>
     item.name.toLowerCase().includes(query.trim().toLowerCase()),
   );
   if (sort === "name") items.sort((a, b) => a.name.localeCompare(b.name));
-  if (sort === "price")
-    items.sort((a, b) =>
-      digital ? a.digital - b.digital : a.printed - b.printed,
-    );
-
+  const edition=(item:typeof items[number])=>(digital || !item.variants.some(v=>v.format==="print"))?"stl":"print";
+  const displayPrice=(item:typeof items[number])=>edition(item)==="stl"?item.digital:item.printed;
+  const pricePending=(item:typeof items[number])=>displayPrice(item) === 0 && !item.variants.find(v=>v.format===edition(item))?.available;
+  if (sort === "price") items.sort((a,b)=>Number(pricePending(a))-Number(pricePending(b)) || displayPrice(a)-displayPrice(b));
   return (
     <main className="wrap store-page" id="main">
       <header className="collection-intro">
@@ -44,7 +45,8 @@ export default function Store() {
           fetchPriority="high"
         />
       </header>
-      <section aria-label="Sample catalogue">
+      <section aria-label="Studio catalogue">
+        {loading && <p role="status">Loading catalogue…</p>}{error && <p role="alert">{error} <button onClick={refreshCatalog}>Retry</button></p>}
         <div className="catalog-bar">
           <div
             className="format-filters"
@@ -83,12 +85,12 @@ export default function Store() {
             >
               <option value="featured">Featured</option>
               <option value="name">Name A–Z</option>
-              <option value="price">Sample price ↑</option>
+              <option value="price">Price ↑</option>
             </select>
           </div>
         </div>
         <div className="catalog-note">
-          <span>Design preview · sample collection and prices</span>
+          <span>Studio collection</span>
           <span aria-live="polite">
             {items.length} {items.length === 1 ? "object" : "objects"}
           </span>
@@ -99,12 +101,12 @@ export default function Store() {
               className="object-tile"
               key={item.id}
               href={
-                "/shop/" + item.id + "?format=" + (digital ? "stl" : "print")
+                "/shop/" + item.id + "?format=" + edition(item)
               }
             >
               <div className="object-photo">
                 <span className="micro">Object / {item.number}</span>
-                <img src={item.cover} loading="lazy" alt={item.name + " sculpture"} />
+                <img src={item.cover} loading="lazy" alt={item.gallery[0]?.label || item.name} />
                 <span className="image-arrow">
                   <ArrowUpRightIcon />
                 </span>
@@ -114,26 +116,25 @@ export default function Store() {
                   <h2>{item.name}</h2>
                   <p>
                     {filter === "All objects"
-                      ? "Printed object  /  Digital STL"
+                      ? item.variants.map(v=>v.format==="print"?"Printed object":"Digital STL").join(" / ")
                       : digital
                         ? "Digital STL edition"
                         : "Printed sculpture"}
                   </p>
                 </div>
                 <span>
-                  {filter === "All objects" ? "Print · " : ""}
-                  {rupees(digital ? item.digital : item.printed)}
+                  {pricePending(item) ? "Pricing pending" : rupees(displayPrice(item))}
                 </span>
               </div>
             </a>
           ))}
         </div>
-        {!items.length && (
+        {!loading && !error && !items.length && (
           <div className="empty">
-            <h2>No matching objects</h2>
-            <button className="inline-link" onClick={() => setQuery("")}>
+            <h2>{collection.length ? "No matching objects" : "The catalogue is currently unavailable."}</h2>
+            {query && <button className="inline-link" onClick={() => setQuery("")}>
               Clear search
-            </button>
+            </button>}
           </div>
         )}
       </section>

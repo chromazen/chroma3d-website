@@ -14,11 +14,13 @@ import { collection } from "../collection";
 export default function SculptureViewer({
   portrait = false,
   makingOfUrl,
+  colour,
   sculpture = collection[0],
 }: {
   portrait?: boolean;
   makingOfUrl?: string;
-  sculpture?: (typeof collection)[number];
+  sculpture?: Pick<(typeof collection)[number], "name" | "modelUrl" | "cover" | "neutralLighting">;
+  colour?: string;
 }) {
   const host = useRef<HTMLDivElement>(null);
   const scene = useRef<SculptureScene | null>(null);
@@ -37,6 +39,9 @@ export default function SculptureViewer({
   useEffect(() => {
     scene.current?.setSpinning(status === "ready" && spinning);
   }, [status, spinning]);
+  useEffect(() => {
+    if (status === "ready") scene.current?.setColour(colour);
+  }, [colour, status]);
 
   useEffect(() => {
     const el = host.current!;
@@ -101,6 +106,7 @@ export default function SculptureViewer({
               {spinning ? <PauseIcon /> : <PlayIcon />}
             </button>
             <button
+              type="button"
               aria-label="Reset model view"
               title="Reset model view"
               onClick={() => scene.current?.reset()}
@@ -134,12 +140,14 @@ export default function SculptureViewer({
         {ready && (
           <div className="sculpture-zoom" role="group" aria-label="Model zoom">
             <button
+              type="button"
               aria-label="Zoom out"
               onClick={() => scene.current?.zoom(false)}
             >
               <MinusIcon />
             </button>
             <button
+              type="button"
               aria-label="Zoom in"
               onClick={() => scene.current?.zoom(true)}
             >

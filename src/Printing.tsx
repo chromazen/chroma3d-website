@@ -1,5 +1,7 @@
 import { lazy, Suspense, useRef, useState } from "react";
 import { ArrowUpRightIcon, UploadSimpleIcon } from "@phosphor-icons/react";
+import {connected} from "./catalog";
+import SubmitRequest from "./SubmitRequest";
 import { business } from "./content";
 import { printMaterials, rupees, navigate } from "./collection";
 import type { CartLine } from "./collection";
@@ -240,7 +242,9 @@ export default function Printing({
                   {selected} · {colour} · {finish} · Qty {qty}
                 </strong>
                 <span>
-                  {quoteOnly
+                  {connected
+                    ? "The studio will review the model and material before quoting."
+                    : quoteOnly
                     ? "The studio will review your requirements for a quotation."
                     : "Illustrative subtotal " +
                       rupees(choice.price * qty) +
@@ -248,6 +252,7 @@ export default function Printing({
                 </span>
               </div>
             )}
+            {connected&&review&&ready&&file&&<SubmitRequest key={file.name+"-"+file.lastModified} kind="print" title={file.name} files={[file]} specification={{material:selected,colour,finish,quantity:qty,inspected_bounds:report.dimensions}}/>}
             <div className="review-actions">
               <a
                 className="secondary"

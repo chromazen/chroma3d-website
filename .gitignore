@@ -5,3 +5,5 @@ dist/
 .env.*
 !.env.example
 .playwright-cli/
+/supabase/.temp/
+/supabase/tests/__pycache__/
