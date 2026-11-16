@@ -1,4 +1,4 @@
-import { collection } from "./collection";
+import { catalogState } from "./catalog";
 import { business } from "./content";
 
 export const origin = "https://www.chroma3d.in";
@@ -13,7 +13,7 @@ type Page = {
   service?: string;
 };
 
-export const pages: Page[] = [
+const corePages: Page[] = [
   {
     path: "/", label: "Home", indexable: true,
     title: "Chroma3D | 3D Printing, Sculptures & Prototyping in Chennai",
@@ -23,7 +23,7 @@ export const pages: Page[] = [
   {
     path: "/shop", label: "Store", indexable: true,
     title: "3D Printed Sculptures & STL Models | Chroma3D",
-    description: "Explore the Chroma3D sculpture collection. View the digital sculpts and compare physical printed pieces with digital STL editions in the sample catalogue.",
+    description: "Explore the Chroma3D sculpture collection. View the digital sculpts and compare physical printed pieces with digital STL editions.",
     image: "/sculpture.webp", imageAlt: "Physical print of Sri Mahalakshmi Devi on a lotus pedestal",
   },
   {
@@ -38,11 +38,12 @@ export const pages: Page[] = [
     description: "Bring Chroma3D a sketch, reference or idea. Prepare a project brief and discuss design, prototyping and 3D printing with the Chennai studio.",
     service: "Design and prototyping", image: "/bracket-study.webp", imageAlt: "Design study of a ribbed mounting bracket",
   },
-  ...collection.map(item => ({
-    path: "/shop/" + item.id, label: item.name, indexable: false,
-    title: item.name + " | Sculpture & STL Study | Chroma3D",
-    description: item.description + " Preview printed and STL formats.",
-    image: item.cover, imageAlt: "Studio render of " + item.name,
+];
+export const getPages = ():Page[] => [...corePages, ...catalogState().items.map(item => ({
+    path: "/shop/" + item.id, label: item.name, indexable: !item.sample,
+    title: item.seoTitle || (item.name + " | Chroma3D"),
+    description: item.seoDescription || item.description,
+    image: item.cover, imageAlt: item.gallery[0]?.label || item.name,
   })),
 ];
 
@@ -67,8 +68,14 @@ function graph(page: Page) {
     webpage.mainEntity = service;
     graph.push({ ...service, "@type": "Service", name: page.service, provider: studio, url, description: page.description });
   }
+  if (page.indexable && page.path.startsWith("/shop/")) {
+    const product = { "@id": url + "#product" };
+    webpage.mainEntity = product;
+    graph.push({ ...product, "@type":"Product", name:page.label, description:page.description,
+      image:new URL(page.image,origin).href, url, brand:{"@type":"Brand",name:"Chroma3D"} });
+  }
   if (page.path !== "/") {
-    const trail = [pages[0], ...(page.path.startsWith("/shop/") ? [pages[1]] : []), page];
+    const trail = [corePages[0], ...(page.path.startsWith("/shop/") ? [corePages[1]] : []), page];
     webpage.breadcrumb = { "@id": url + "#breadcrumb" };
     graph.push({ "@type": "BreadcrumbList", "@id": url + "#breadcrumb", itemListElement: trail.map((p, i) => ({
       "@type": "ListItem", position: i + 1, name: p.label, item: origin + p.path,
@@ -80,8 +87,8 @@ function graph(page: Page) {
 type Tag = { tag: "title" | "link" | "meta" | "script"; attrs?: Record<string, string>; text?: string };
 
 export function headTags(path: string, official: boolean): Tag[] {
-  const page = pages.find(p => p.path === path);
-  const title = page?.title ?? (({ "/bag": "Shopping bag", "/checkout": "Checkout" }[path] ?? "Page unavailable") + " | Chroma3D");
+  const page = getPages().find(p => p.path === path);
+  const title = page?.title ?? (({ "/bag": "Shopping bag", "/checkout": "Checkout", "/account":"My account", "/admin":"Studio desk", "/requests":"Your studio records" }[path] ?? "Page unavailable") + " | Chroma3D");
   const tags: Tag[] = [{ tag: "title", text: title }];
   if (!official || !page?.indexable) tags.push({ tag: "meta", attrs: { name: "robots", content: "noindex, follow" } });
   if (!page) return tags;
@@ -90,9 +97,9 @@ export function headTags(path: string, official: boolean): Tag[] {
   for (const [key, content] of Object.entries({
     description: page.description, "og:title": title, "og:description": page.description, "og:url": url,
     "og:type": "website", "og:site_name": business.name, "og:locale": "en_IN",
-    "og:image": origin + page.image, "og:image:alt": page.imageAlt,
+    "og:image": new URL(page.image,origin).href, "og:image:alt": page.imageAlt,
     "twitter:card": "summary_large_image", "twitter:title": title, "twitter:description": page.description,
-    "twitter:image": origin + page.image, "twitter:image:alt": page.imageAlt,
+    "twitter:image": new URL(page.image,origin).href, "twitter:image:alt": page.imageAlt,
   })) tags.push({ tag: "meta", attrs: { [key.startsWith("og:") ? "property" : "name"]: key, content } });
   tags.push({ tag: "script", attrs: { type: "application/ld+json" }, text: JSON.stringify(graph(page)).replaceAll("<", "\\u003c") });
   return tags;

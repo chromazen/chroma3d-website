@@ -438,6 +438,31 @@
   .form-stack h2 {
     margin-bottom: 5px;
   }
+  .authenticator-qr {
+    display: block;
+    width: min(100%, 272px);
+    height: auto;
+    box-sizing: border-box;
+    padding: 22px;
+    background: white;
+    color-scheme: light;
+    forced-color-adjust: none;
+    image-rendering: pixelated;
+  }
+  .authenticator-manual summary {
+    cursor: pointer;
+    text-decoration: underline;
+    text-underline-offset: 3px;
+  }
+  .authenticator-manual p {
+    margin: 12px 0;
+  }
+  .authenticator-manual code {
+    display: inline-block;
+    max-width: 100%;
+    overflow-wrap: anywhere;
+    user-select: all;
+  }
   .form-stack small,
   .field small {
     font-size: 12px;

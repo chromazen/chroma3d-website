@@ -8,6 +8,9 @@ export type CartLine = {
   physical: boolean;
   image?: string;
   file?: File;
+  variantId?: string;
+  sample?: boolean;
+  heightMm?: number;
 };
 export const collection = [
   {
@@ -67,7 +70,7 @@ export const rupees = (amount: number) =>
   new Intl.NumberFormat("en-IN", {
     style: "currency",
     currency: "INR",
-    maximumFractionDigits: 0,
+    maximumFractionDigits: 2,
   }).format(amount);
 export const printMaterials = [
   { name: "PLA", price: 350, note: "For form studies and display pieces." },

@@ -1,7 +1,7 @@
 import { SlideUpLines, UnderlineLink } from "./components/EditorialMotion";
-import { useEffect, useRef, useState, useSyncExternalStore } from "react";
+import { useEffect, useRef, useSyncExternalStore } from "react";
 import type { MouseEvent } from "react";
-import { ArrowUpRightIcon, HandbagIcon } from "@phosphor-icons/react";
+import { ArrowUpRightIcon, HandbagIcon, UserCircleIcon } from "@phosphor-icons/react";
 import SculptureViewer from "./components/SculptureViewer";
 import SelectedWork from "./components/SelectedWork";
 import { Bag, Checkout } from "./Shop";
@@ -11,9 +11,15 @@ import Printing from "./Printing";
 import Studio, { useStudioProject } from "./Studio";
 import { business } from "./content";
 import { navigate } from "./collection";
+import {lazy,Suspense} from "react";
+import {connected, refreshCatalog, useCatalog} from "./catalog";
 import { updateHead } from "./seo";
-import type { CartLine } from "./collection";
+import { useCustomerSession } from "./customerSession";
+import { useShoppingBag } from "./useShoppingBag";
 
+const Admin=lazy(()=>import("./Admin"));
+const Account=lazy(()=>import("./Account"));
+const Workspace=lazy(()=>import("./Workspace"));
 const entrances = [
   {
     path: "/shop",
@@ -122,13 +128,17 @@ function Home() {
 }
 export default function App({ initialPath = "/" }: { initialPath?: string }) {
   const project = useStudioProject();
+  const catalog=useCatalog();
+  useEffect(()=>{void refreshCatalog()},[]);
   const url = useSyncExternalStore(
     subscribe,
     () => location.pathname + location.search,
     () => initialPath,
   );
   const path = url.split("?")[0].replace(/\/$/, "") || "/";
-  const [lines, setLines] = useState<CartLine[]>([]);
+  const session = useCustomerSession();
+  const bag = useShoppingBag(session === undefined ? undefined : session?.user.id ?? null);
+  const { lines, add, change } = bag;
   const prev = useRef(url);
   useEffect(() => {
     updateHead(path);
@@ -139,7 +149,7 @@ export default function App({ initialPath = "/" }: { initialPath?: string }) {
       main?.setAttribute("tabindex", "-1");
       main?.focus({ preventScroll: true });
     }
-  }, [url, path]);
+  }, [url, path, catalog.items]);
   function links(event: MouseEvent<HTMLDivElement>) {
     if (
       event.defaultPrevented ||
@@ -164,30 +174,6 @@ export default function App({ initialPath = "/" }: { initialPath?: string }) {
     event.preventDefault();
     navigate(link.pathname + link.search);
   }
-  function add(line: CartLine) {
-    setLines((old) => {
-      const match = old.find((l) => l.key === line.key);
-      return match
-        ? old.map((l) =>
-            l.key === line.key
-              ? {
-                  ...l,
-                  quantity: l.physical
-                    ? Math.min(100000, l.quantity + line.quantity)
-                    : 1,
-                }
-              : l,
-          )
-        : [...old, line];
-    });
-  }
-  function change(key: string, quantity: number) {
-    setLines((old) =>
-      quantity
-        ? old.map((l) => (l.key === key ? { ...l, quantity } : l))
-        : old.filter((l) => l.key !== key),
-    );
-  }
   const count = lines.reduce((s, l) => s + l.quantity, 0);
   return (
     <div className="site" onClick={links}>
@@ -210,6 +196,10 @@ export default function App({ initialPath = "/" }: { initialPath?: string }) {
             </UnderlineLink>
           ))}
         </nav>
+        <div className="mast-utilities">
+        <a className="account-link" href="/account" aria-label="My account" aria-current={path === "/account" ? "page" : undefined}>
+          <UserCircleIcon aria-hidden="true" size={21} /><span>My account</span>
+        </a>
         <a
           href="/bag"
           className="bag-link"
@@ -221,7 +211,9 @@ export default function App({ initialPath = "/" }: { initialPath?: string }) {
             {count}
           </b>
         </a>
+        </div>
       </header>
+      {bag.error && <p role="alert" className="wrap">{bag.error}</p>}
       {path === "/" ? (
         <Home />
       ) : path === "/shop" ? (
@@ -232,10 +224,18 @@ export default function App({ initialPath = "/" }: { initialPath?: string }) {
         <Printing add={add} />
       ) : path === "/studio" ? (
         <Studio project={project} />
+      ) : path === "/admin" ? (
+        <Suspense fallback={<main id="main">Loading studio desk…</main>}><Admin/></Suspense>
+      ) : path === "/account" ? (
+        <Suspense fallback={<main id="main" className="page wrap">Opening your account…</main>}><Account session={session} /></Suspense>
+      ) : path === "/requests" ? (
+        <main id="main" className="page wrap narrow"><h1>Studio records</h1><Suspense fallback={<p>Loading records…</p>}><Workspace key={session?.user.id ?? "guest"}/></Suspense></main>
+      ) : (path === "/bag" || path === "/checkout") && bag.loading ? (
+        <main id="main" className="page wrap" role="status">Opening your bag…</main>
       ) : path === "/bag" ? (
         <Bag lines={lines} change={change} />
       ) : path === "/checkout" ? (
-        <Checkout lines={lines} complete={() => setLines([])} />
+        <Checkout lines={lines} complete={bag.clear} sessionEmail={session?.user.email} />
       ) : (
         <main id="main" className="page wrap">
           <h1>Page unavailable</h1>
@@ -262,6 +262,7 @@ export default function App({ initialPath = "/" }: { initialPath?: string }) {
           >
             Instagram <ArrowUpRightIcon />
           </a>
+          {connected && <a href={session ? "/account" : "/requests"}>{session ? "My account" : "Your requests"}</a>}
           <a href={business.youtube} target="_blank" rel="noopener noreferrer">
             YouTube <ArrowUpRightIcon />
           </a>

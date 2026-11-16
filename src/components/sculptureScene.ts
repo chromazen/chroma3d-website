@@ -5,6 +5,7 @@ import { MeshoptDecoder } from "three/addons/libs/meshopt_decoder.module.js";
 import { RoomEnvironment } from "three/addons/environments/RoomEnvironment.js";
 
 export type SculptureScene = {
+  setColour: (colour?: string) => void;
   setSpinning: (enabled: boolean) => void;
   reset: () => void;
   zoom: (closer: boolean) => void;
@@ -72,7 +73,8 @@ export async function createSculptureScene(
   rim.position.set(3, 2, -2);
   scene.add(rim);
 
-  const camera = new T.PerspectiveCamera(30, 1, size.y * 0.01, size.y * 20);
+  const extent = Math.max(size.x, size.y, size.z);
+  const camera = new T.PerspectiveCamera(30, 1, extent * 0.01, extent * 20);
   const controls = new OrbitControls(camera, canvas);
   controls.enablePan = false;
   controls.minPolarAngle = 0.08;
@@ -184,7 +186,21 @@ export async function createSculptureScene(
   const observer = new ResizeObserver(resize);
   observer.observe(host);
   resize();
+  const originalColours = new Map<T.Material, T.Color>();
   return {
+    setColour(colour) {
+      if (!colour && !originalColours.size) return;
+      model.traverse((part) => {
+        if (!(part instanceof T.Mesh)) return;
+        for (const material of [part.material].flat()) {
+          if (!(material.color instanceof T.Color)) continue;
+          if (!originalColours.has(material)) originalColours.set(material, material.color.clone());
+          if (colour) material.color.set(colour);
+          else material.color.copy(originalColours.get(material)!);
+        }
+      });
+      draw();
+    },
     setSpinning(enabled) {
       spinning = enabled;
       syncSpin();

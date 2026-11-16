@@ -7,6 +7,8 @@ import {
   CheckSquareIcon,
   CubeIcon,
 } from "@phosphor-icons/react";
+import {connected} from "./catalog";
+import SubmitRequest from "./SubmitRequest";
 import { business } from "./content";
 const ModelStage = lazy(() => import("./components/ModelStage"));
 
@@ -192,8 +194,7 @@ export default function Studio({
                 <p className="kicker">Project intake</p>
                 <h2>Tell us what you’re imagining.</h2>
                 <p className="fine">
-                  Local preview. Use sample details to try a brief and design
-                  review.
+                  {connected?"Prepare your brief, then choose whether to send it to the development studio.":"Local preview. Use sample details to try a brief and design review."}
                 </p>
               </div>
               <label>
@@ -260,8 +261,7 @@ export default function Studio({
                     }}
                   />
                   <small>
-                    Up to three images or PDFs, 10 MB combined. Files stay on
-                    this device.
+                    Up to three images or PDFs, 10 MB combined. {connected?"Files are sent only when you submit the brief.":"Files stay on this device."}
                   </small>
                 </label>
                 {fileError && (
@@ -324,6 +324,7 @@ export default function Studio({
                       : "Delivery details prepared"}
               </h2>
               <blockquote>{brief?.idea}</blockquote>
+              {connected && brief && phase==="received" && <SubmitRequest kind="studio" title={brief.idea.slice(0,160)} specification={{idea:brief.idea,requirements:brief.requirements,reference:brief.reference}} contact={{name:brief.name,email:brief.email}} files={files}/>}
               <p className="fine">
                 {brief?.name} · {brief?.email}
               </p>

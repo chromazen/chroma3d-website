@@ -2,16 +2,22 @@ import { createElement } from "react";
 import { renderToReadableStream, renderToStaticMarkup } from "react-dom/server";
 import { MotionConfig } from "motion/react";
 import App from "./App";
-import { headTags, origin, pages } from "./seo";
+import { headTags, origin, getPages } from "./seo";
 
-export const publicPaths = pages.map(p => p.path);
-export const sitemapUrls = pages.filter(p => p.indexable).map(p => origin + p.path);
+import { fetchCatalog, setCatalog, catalogState } from "./catalog";
+export async function prepareCatalog(url?:string,key?:string) {
+  if (!!url !== !!key) throw Error("Both public Supabase settings are required");
+  if(url && key)setCatalog(await fetchCatalog(url,key));
+  const pages=getPages();
+  return {publicPaths:pages.map(p=>p.path),sitemapUrls:pages.filter(p=>p.indexable).map(p=>origin+p.path),
+    snapshot:JSON.stringify(catalogState().items).replaceAll("<","\\u003c")};
+}
 
 export async function renderPage(path: string) {
   const head = renderToStaticMarkup(<>{headTags(path, true).map(({ tag, attrs, text }, i) =>
     createElement(tag, { ...attrs, key: i, "data-seo": "" }, text)
   )}</>);
-  if (!publicPaths.includes(path)) {
+  if (!getPages().some(p=>p.path===path)) {
     const fallback = path === "/404" ? '<main id="main"><h1>Page unavailable</h1><a href="/">Back to Chroma3D</a></main>' : "";
     return { head, body: `<div id="root">${fallback}</div>` };
   }

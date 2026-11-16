@@ -83,18 +83,23 @@ function threeMFScale(data: ArrayBuffer) {
   return factors[[...units][0]];
 }
 
-function readSTL(data: ArrayBuffer) {
-  if (data.byteLength < 15) throw Error("This STL is empty or incomplete.");
-  const header = new TextDecoder().decode(data.slice(0, 80)).trimStart();
-  if (
-    !header.startsWith("solid") &&
-    (data.byteLength < 84 ||
-      84 + new DataView(data).getUint32(80, true) * 50 !== data.byteLength)
-  )
+export function readStlGeometry(data: ArrayBuffer) {
+  if (data.byteLength < 84) throw Error("This STL is empty or incomplete.");
+  const triangles = new DataView(data).getUint32(80, true);
+  const loader = new STLLoader();
+  if (triangles && 84 + triangles * 50 === data.byteLength) return loader.parse(data);
+  const decoder = new TextDecoder();
+  const header = decoder.decode(data.slice(0, 150)).trimStart();
+  if (!header.startsWith("solid") || header.includes("\0"))
     throw Error("The binary STL has an invalid triangle count.");
-  const geometry = new STLLoader().parse(data);
+  const ascii = decoder.decode(data).trimStart();
+  if (ascii.length < 84) throw Error("This ASCII STL is incomplete.");
+  return loader.parse(ascii);
+}
+
+function readSTL(data: ArrayBuffer) {
   return new T.Mesh(
-    geometry,
+    readStlGeometry(data),
     new T.MeshStandardMaterial({
       color: 0xcaa17a,
       roughness: 0.66,
